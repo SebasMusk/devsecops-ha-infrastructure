@@ -1,0 +1,28 @@
+---
+- name: Configurar la seguridad del repositorio de Harbor
+  hosts: localhost
+  gather_facts: no
+  vars:
+    harbor_user: "admin"
+    harbor_pass: "Harbor12345"
+    project_id: 1
+
+  tasks:
+    - name: Configurar nivel de seguridad del repositorio
+      uri:
+        url: "http://{{ item }}/api/v2.0/projects/{{ project_id }}"
+        method: PUT
+        user: "{{ harbor_user }}"
+        password: "{{ harbor_pass }}"
+        force_basic_auth: yes
+        body_format: json
+        body:
+          metadata:
+            auto_scan: "true"
+            prevent_vul: "true"
+            severity: "critical"
+            reuse_sys_cve_allowlist: "true"
+            public: "true"
+        status_code: 200
+      loop: "{{ groups['registries'] }}"
+      register: security_results

@@ -1,0 +1,6 @@
+---
+- name: Reiniciar Monitorizacion
+  community.docker.docker_compose:
+    project_src: "{{ monitor_dir }}"
+    state: present
+    restarted: yes

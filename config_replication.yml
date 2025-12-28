@@ -1,0 +1,14 @@
+---
+- name: Configurar la replidacion del repositorio entre nodos
+  hosts: localhost
+  gather_facts: no
+  vars:
+    harbor_user: "admin"
+    harbor_pass: "Harbor12345"
+
+  tasks:
+    - name: Establecer la replicacion para cada nodo
+      include_tasks: ./replication_per_node.yml
+      loop: "{{ groups['registries'] }}"
+      loop_control:
+        loop_var: source_node

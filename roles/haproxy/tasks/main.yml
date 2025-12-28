@@ -1,0 +1,34 @@
+---
+- name: Instalar HAProxy
+  apt:
+    name: haproxy
+    state: present
+    update_cache: yes
+
+- name: Configurar HAProxy
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: '0644'
+  notify: Reiniciar HAProxy
+
+- name: Instalar Keepalived
+  apt:
+    name: keepalived
+    state: present
+    update_cache: yes
+
+- name: Permitir binding a IP no locales (Necesario para la IP virtual)
+  sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Configurar Keepalived
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: '0644'
+  notify: Reiniciar Keepalived

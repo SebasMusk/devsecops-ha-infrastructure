@@ -1,0 +1,6 @@
+---
+#Ejecucion del playbook principal de instalaciones iniciales
+- import_playbook: site.yml
+#Playbooks secundarios para la configuracion segura y fiable de Harbor
+- import_playbook: config_security.yml
+- import_playbook: config_replication.yml

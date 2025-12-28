@@ -1,0 +1,81 @@
+- name: Instalar dependencias previas
+  apt:
+    name: ['ca-certificates', 'curl', 'gnupg']
+    state: present
+    update_cache: yes
+
+- name: Crear directorio para llaves GPG
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Descargar llave oficial de Docker
+  get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+
+- name: Añadir repositorio Docker
+  apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu jammy stable"
+    state: present
+    filename: docker
+
+- name: Instalar Docker Engine y Plugins
+  apt:
+    name: ['docker-ce', 'docker-ce-cli', 'containerd.io', 'docker-compose-plugin']
+    state: present
+    update_cache: yes
+
+- name: Descargar el instalador oficial de Harbor
+  get_url:
+    url: "https://github.com/goharbor/harbor/releases/download/v2.14.0/harbor-offline-installer-v2.14.0.tgz"
+    dest: /tmp/harbor.tgz
+    mode: '0644'
+
+#En el caso de que Github se caiga, tenemos esta tarea alternativa en la que ya
+#tenemos el tgz de Harbor en esta maquina y simplemente lo tendriamos que mover
+#al direcciorio del proyecto y descomentar la siguiente tarea que se encarga
+#de copiar ese archivo a los nodos Harbor (Comentando la tarea anterior ademas)
+#- name: Copiar el instalador de Harbor
+#  ansible.builtin.copy:
+#    src: /home/ansible/proyecto/harbor.tgz
+#    dest: /tmp/harbor.tgz
+#    owner: root
+#    group: root
+#    mode: '0644'
+
+- name: Descomprimir Harbor
+  unarchive:
+    src: /tmp/harbor.tgz
+    dest: /opt/
+    remote_src: yes
+    creates: /opt/harbor/install.sh
+
+- name: Generar configuracion inicial
+  copy:
+    src: /opt/harbor/harbor.yml.tmpl
+    dest: /opt/harbor/harbor.yml
+    remote_src: yes
+
+- name: Desactivar HTTPS y asignar la IP virtual del Proxy
+  replace:
+    path: /opt/harbor/harbor.yml
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  loop:
+    - { regexp: 'https:', replace: '#https:' }
+    - { regexp: 'port: 443', replace: '#port: 443' }
+    - { regexp: 'certificate:', replace: '#certificate:' }
+    - { regexp: 'private_key:', replace: '#private_key:' }
+    - { regexp: 'hostname: reg.mydomain.com', replace: 'hostname: 192.168.202.100' }
+    - { regexp: 'harbor_admin_password: Harbor12345', replace: 'harbor_admin_password: Harbor12345' }
+
+- name: Ejecutar el script de instalacion
+  shell: "./install.sh --with-trivy"
+  args:
+    chdir: /opt/harbor
+    creates: /opt/harbor/docker-compose.yml
+  async: 1200
+  poll: 10

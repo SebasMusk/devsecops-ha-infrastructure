@@ -1,0 +1,56 @@
+---
+- name: Crear directorio de monitorizacion
+  file:
+    path: "{{ monitor_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copiar archivo Docker Compose
+  copy:
+    src: docker-compose.yml
+    dest: "{{ monitor_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Generar configuracion de Prometheus
+  template:
+    src: prometheus.yml.j2
+    dest: "{{ monitor_dir }}/prometheus.yml"
+    mode: '0644'
+  notify: Reiniciar Monitorizacion
+
+- name: Levantar contenedores
+  community.docker.docker_compose:
+    project_src: "{{ monitor_dir }}"
+    state: present
+  register: docker_result
+
+- name: Esperar a que Grafana este operativo en el puerto 3000
+  uri:
+    url: "http://localhost:3000/api/health"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 24
+  delay: 5
+
+- name: Crear Datasource de Prometheus en Grafana
+  community.grafana.grafana_datasource:
+    name: "Prometheus-Ansible"
+    grafana_url: "http://localhost:3000"
+    grafana_user: "admin"
+    grafana_password: "admin"
+    ds_type: "prometheus"
+    ds_url: "http://prometheus:9090"
+    access: "proxy"
+    is_default: yes
+    state: present
+
+- name: Importar Dashboard
+  community.grafana.grafana_dashboard:
+    grafana_url: "http://localhost:3000"
+    grafana_user: "admin"
+    grafana_password: "admin"
+    state: present
+    overwrite: yes
+    path: "roles/monitorizacion/files/node_exporter.json"
+  delegate_to: localhost

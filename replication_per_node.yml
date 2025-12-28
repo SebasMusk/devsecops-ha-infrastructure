@@ -1,0 +1,68 @@
+- name: "[{{ source_node }}] Registrar nodo destino {{ item }}"
+  uri:
+    url: "http://{{ source_node }}/api/v2.0/registries"
+    method: POST
+    user: "{{ harbor_user }}"
+    password: "{{ harbor_pass }}"
+    force_basic_auth: yes
+    status_code: [201,409]
+    body_format: json
+    body:
+      name: "Nodo destino-{{ item }}"
+      url: "http://{{ item }}"
+      insecure: true
+      type: "harbor"
+      credential: { type: "basic", access_key: "{{ harbor_user }}", access_secret: "{{ harbor_pass }}" }
+  loop: "{{ groups['registries'] }}"
+  when: source_node != item
+
+- name: "[{{ source_node }}] Obtener ID del endpoint del nodo {{ item }}"
+  uri:
+    url: "http://{{ source_node }}/api/v2.0/registries?name=destino-{{ item }}"
+    method: GET
+    user: "{{ harbor_user }}"
+    password: "{{ harbor_pass }}"
+    force_basic_auth: yes
+    return_content: yes
+  register: endpoint_info
+  loop: "{{ groups['registries'] }}"
+  when: source_node != item
+
+- name: "[{{ source_node }}] Crear endpoint hacia {{ item.item }}"
+  uri:
+    url: "http://{{ source_node }}/api/v2.0/replication/policies"
+    method: POST
+    user: "{{ harbor_user }}"
+    password: "{{ harbor_pass }}"
+    force_basic_auth: yes
+    status_code: [201, 409]
+    body_format: json
+    body: '{"name": "replicar-a-{{ item.item }}", "src_registry": null, "dest_registry": {"id": {{ item.json[0].id }} }, "dest_namespace_replace_count": 1, "trigger": {"type": "event_based", "trigger_settings": {}}, "enabled": true, "override": true, "filters": []}'
+  loop: "{{ endpoint_info.results }}"
+  when: item.skipped is not defined
+
+- name: "[{{ source_node }}] Obtener ID de política para {{ item.item }}"
+  uri:
+    url: "http://{{ source_node }}/api/v2.0/replication/policies?name=replicar-a-{{ item.item }}"
+    method: GET
+    user: "{{ harbor_user }}"
+    password: "{{ harbor_pass }}"
+    force_basic_auth: yes
+    return_content: yes
+  register: policy_info
+  loop: "{{ endpoint_info.results }}"
+  when: item.skipped is not defined
+
+- name: "Replicando [{{ source_node }}]"
+  uri:
+    url: "http://{{ source_node }}/api/v2.0/replication/executions"
+    method: POST
+    user: "{{ harbor_user }}"
+    password: "{{ harbor_pass }}"
+    force_basic_auth: yes
+    body_format: json
+    body: '{"policy_id": {{ item.json[0].id }} }'
+    status_code: 201
+  loop: "{{ policy_info.results }}"
+  when: item.skipped is not defined
+  ignore_errors: yes

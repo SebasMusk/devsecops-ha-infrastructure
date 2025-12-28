@@ -1,0 +1,25 @@
+---
+- name: Instalacion de los nodos HAProxy
+  hosts: loadbalancers
+  become: yes
+  roles:
+    - haproxy
+
+- name: Instalacion de los nodos Harbor
+  hosts: registries
+  become: yes
+  roles:
+    - harbor
+
+- name: Instalar en cada maquina un Node Exporter
+  hosts: all
+  become: yes
+  roles:
+    - geerlingguy.node_exporter
+
+- name: Desplegar Servidor de Monitorizacion
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  roles:
+    - monitorizacion

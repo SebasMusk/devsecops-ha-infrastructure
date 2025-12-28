@@ -1,0 +1,2 @@
+192.168.202.104 ansible_user=harbor1 ansible_become_password=harbor1
+192.168.202.105 ansible_user=harbor2 ansible_become_password=harbor2

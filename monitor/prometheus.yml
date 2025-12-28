@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'infraestructura-cimsi'
+    static_configs:
+      - targets:
+                - '192.168.202.102:9100'
+                - '192.168.202.103:9100'
+                - '192.168.202.104:9100'
+                - '192.168.202.105:9100'
+        

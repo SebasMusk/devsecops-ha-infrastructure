@@ -1,0 +1,8 @@
+---
+# defaults file for monitorizacion
+# Directorio donde guardaremos el docker-compose y la config
+monitor_dir: "/home/ansible/proyecto/monitor"
+
+# Puertos (por si algún día quieres cambiarlos porque están ocupados)
+prometheus_port: "9090"
+grafana_port: "3000"
